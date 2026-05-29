@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c232d"/>
+      <stop offset="1" stop-color="#0e1116"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a444f"/>
+      <stop offset="1" stop-color="#222a33"/>
+    </linearGradient>
+    <linearGradient id="molten" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd23f"/>
+      <stop offset="1" stop-color="#ff6a2b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff6a2b" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff6a2b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- heat glow under the tip -->
+  <circle cx="256" cy="372" r="120" fill="url(#glow)"/>
+
+  <!-- nozzle body (trapezoid narrowing to tip) -->
+  <path d="M176 150
+           h160
+           a20 20 0 0 1 20 20
+           v92
+           l-44 70
+           h-112
+           l-44 -70
+           v-92
+           a20 20 0 0 1 20 -20 z"
+        fill="url(#metal)" stroke="#11161c" stroke-width="6"/>
+
+  <!-- heater block fins -->
+  <rect x="168" y="196" width="176" height="14" rx="5" fill="#11161c" opacity="0.55"/>
+  <rect x="168" y="224" width="176" height="14" rx="5" fill="#11161c" opacity="0.55"/>
+
+  <!-- tip opening -->
+  <path d="M232 332 h48 l-14 26 h-20 z" fill="#0e1116" stroke="#11161c" stroke-width="4"/>
+
+  <!-- molten extruded line / drop -->
+  <path d="M250 356
+           q6 30 6 54
+           q0 26 -10 40
+           q-2 -28 -2 -40
+           q0 -28 6 -54 z"
+        fill="url(#molten)"/>
+  <circle cx="252" cy="452" r="16" fill="url(#molten)"/>
+</svg>

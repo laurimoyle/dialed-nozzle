@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dialed Nozzle — 3D Print &amp; Pen Settings</title>
+<meta name="description" content="Filament settings, pen compatibility, troubleshooting and a spool log for 3D printers and 3D pens. Works offline.">
+<meta name="theme-color" content="#0e1116">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dialed Nozzle">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e1116;
+    --panel:#161b22;
+    --panel2:#1c232d;
+    --line:#2a323d;
+    --ink:#e8edf2;
+    --ink-dim:#8a95a3;
+    --accent:#ff6a2b;       /* molten orange */
+    --accent2:#ffd23f;      /* hot filament yellow */
+    --good:#2ee6a6;
+    --bad:#ff5470;
+    --warn:#ffb020;
+    --kid:#48c6ff;
+    --radius:14px;
+    --mono:'Archivo',sans-serif;
+    --sans:'Archivo',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(255,106,43,.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(72,198,255,.07), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+
+  /* Header */
+  header{
+    padding:18px 18px 14px;
+    border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:20;
+    background:rgba(14,17,22,.86);
+    backdrop-filter:blur(12px);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .logo{
+    width:34px;height:34px;border-radius:9px;flex:none;
+    background:linear-gradient(145deg,var(--accent),var(--accent2));
+    display:grid;place-items:center;font-weight:900;color:#1a1207;font-family:var(--mono);font-size:13px;
+    box-shadow:0 4px 18px rgba(255,106,43,.35);
+  }
+  .brand h1{font-size:19px;font-weight:800;letter-spacing:-.3px;}
+  .brand .sub{font-family:var(--mono);font-size:10px;color:var(--ink-dim);letter-spacing:1px;text-transform:uppercase;}
+
+  /* Device toggle */
+  .toggle{
+    margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:6px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:5px;
+  }
+  .toggle button{
+    font-family:var(--sans);font-weight:700;font-size:14px;
+    border:0;border-radius:8px;padding:11px 8px;color:var(--ink-dim);
+    background:transparent;cursor:pointer;transition:.18s;display:flex;align-items:center;justify-content:center;gap:7px;
+  }
+  .toggle button .ic{font-size:16px;}
+  .toggle button.on{background:linear-gradient(145deg,var(--accent),#ff8a4b);color:#1a1207;box-shadow:0 3px 12px rgba(255,106,43,.4);}
+
+  /* Tabs */
+  nav.tabs{display:flex;gap:4px;padding:10px 12px 0;position:sticky;top:0;}
+  .tabwrap{position:sticky;top:122px;z-index:15;background:rgba(14,17,22,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);}
+  nav.tabs button{
+    flex:1;background:transparent;border:0;color:var(--ink-dim);font-family:var(--mono);
+    font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+    padding:10px 4px 12px;cursor:pointer;border-bottom:2px solid transparent;transition:.15s;
+  }
+  nav.tabs button.on{color:var(--accent2);border-bottom-color:var(--accent);}
+
+  main{padding:18px 16px 90px;flex:1;}
+  .view{display:none;animation:fade .25s ease;}
+  .view.on{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  h2.section{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-dim);margin:4px 0 14px;}
+  .lead{color:var(--ink-dim);font-size:14px;margin-bottom:18px;}
+
+  /* Cards */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
+  .card.tap{cursor:pointer;transition:.15s;}
+  .card.tap:active{transform:scale(.985);border-color:var(--accent);}
+
+  /* Select / inputs */
+  label.fld{display:block;font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-dim);margin:0 0 6px 2px;}
+  select,input{
+    width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+    font-family:var(--sans);font-size:15px;padding:13px;border-radius:10px;margin-bottom:14px;appearance:none;
+  }
+  select:focus,input:focus{outline:none;border-color:var(--accent);}
+  .selwrap{position:relative;}
+  .selwrap::after{content:"▾";position:absolute;right:14px;top:13px;color:var(--accent2);pointer-events:none;}
+
+  /* Verdict */
+  .verdict{border-radius:var(--radius);padding:18px;margin-top:4px;border:1px solid var(--line);animation:fade .3s;}
+  .verdict .big{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;margin-bottom:8px;}
+  .verdict .big .emoji{font-size:24px;}
+  .verdict p{font-size:14px;color:var(--ink);opacity:.92;margin-bottom:6px;}
+  .verdict .src{font-family:var(--mono);font-size:10px;color:var(--ink-dim);margin-top:8px;letter-spacing:.4px;}
+  .v-good{background:linear-gradient(160deg,rgba(46,230,166,.12),transparent);border-color:rgba(46,230,166,.35);}
+  .v-bad{background:linear-gradient(160deg,rgba(255,84,112,.12),transparent);border-color:rgba(255,84,112,.4);}
+  .v-warn{background:linear-gradient(160deg,rgba(255,176,32,.12),transparent);border-color:rgba(255,176,32,.4);}
+  .v-kid{background:linear-gradient(160deg,rgba(72,198,255,.12),transparent);border-color:rgba(72,198,255,.4);}
+  .tempchip{display:inline-block;font-family:var(--mono);font-weight:700;font-size:13px;background:var(--panel2);border:1px solid var(--line);padding:5px 9px;border-radius:7px;margin:3px 5px 3px 0;color:var(--accent2);}
+
+  /* Reference list */
+  .matrow{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px;}
+  .matrow:last-child{border-bottom:0;}
+  .matrow .k{color:var(--ink-dim);font-family:var(--mono);font-size:11px;letter-spacing:.5px;text-transform:uppercase;}
+  .matrow .v{font-weight:700;text-align:right;}
+  .mathead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .mathead .name{font-size:17px;font-weight:800;}
+  .pill{font-family:var(--mono);font-size:9px;letter-spacing:.6px;text-transform:uppercase;padding:4px 8px;border-radius:20px;border:1px solid var(--line);color:var(--ink-dim);}
+  .pill.beg{color:var(--good);border-color:rgba(46,230,166,.4);}
+  .pill.int{color:var(--warn);border-color:rgba(255,176,32,.4);}
+  .pill.adv{color:var(--bad);border-color:rgba(255,84,112,.4);}
+  .note{font-size:12.5px;color:var(--ink-dim);margin-top:10px;line-height:1.5;}
+  .whatis{font-size:13.5px;line-height:1.55;color:var(--ink);opacity:.93;margin:2px 0 12px;padding-left:11px;border-left:2px solid var(--accent);}
+  .grouphead{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent2);margin:22px 2px 12px;}
+  .grouphead:first-child{margin-top:4px;}
+  .ghsub{color:var(--ink-dim);font-weight:600;letter-spacing:.5px;text-transform:none;}
+  .specintro{font-size:13px;line-height:1.6;color:var(--ink-dim);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:14px;}
+  .specintro b{color:var(--ink);}
+
+  /* Troubleshooter */
+  .symbtn{width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);color:var(--ink);
+    border-radius:11px;padding:14px 15px;margin-bottom:9px;font-family:var(--sans);font-size:15px;font-weight:600;
+    cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:.15s;}
+  .symbtn:active{border-color:var(--accent);transform:scale(.99);}
+  .symbtn .arr{color:var(--accent);font-weight:700;}
+  .fixlist{list-style:none;counter-reset:f;}
+  .fixlist li{counter-increment:f;position:relative;padding:11px 0 11px 38px;border-bottom:1px solid var(--line);font-size:14px;}
+  .fixlist li:last-child{border-bottom:0;}
+  .fixlist li::before{content:counter(f);position:absolute;left:0;top:10px;width:25px;height:25px;border-radius:7px;
+    background:linear-gradient(145deg,var(--accent),var(--accent2));color:#1a1207;font-family:var(--mono);font-weight:700;
+    font-size:12px;display:grid;place-items:center;}
+  .backbtn{background:transparent;border:0;color:var(--accent2);font-family:var(--mono);font-size:12px;font-weight:700;
+    cursor:pointer;padding:4px 0 14px;letter-spacing:.5px;}
+
+  .disclaimer{font-size:11.5px;color:var(--ink-dim);background:var(--panel);border:1px dashed var(--line);
+    border-radius:10px;padding:11px 13px;margin-top:8px;line-height:1.5;font-family:var(--mono);}
+  .savebanner{background:linear-gradient(160deg,rgba(255,210,63,.13),transparent);border:1px solid rgba(255,210,63,.35);
+    border-radius:12px;padding:13px 15px;font-size:13px;margin-top:12px;display:none;}
+  .savebanner.show{display:block;}
+  .savebanner b{color:var(--accent2);}
+  footer{padding:14px 16px 26px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--ink-dim);text-align:center;letter-spacing:.5px;}
+
+  /* Spool log */
+  .spoolhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:4px;}
+  .counter{font-size:11px;color:var(--ink-dim);margin-top:3px;letter-spacing:.3px;}
+  .addbtn{flex:none;background:linear-gradient(145deg,var(--accent),var(--accent2));color:#1a1207;border:0;
+    font-weight:800;font-size:13px;padding:10px 14px;border-radius:10px;cursor:pointer;box-shadow:0 3px 12px rgba(255,106,43,.35);}
+  .addbtn:active{transform:scale(.97);}
+  .empty{text-align:center;padding:46px 20px;border:1px dashed var(--line);border-radius:var(--radius);background:var(--panel);}
+  .emptyic{font-size:40px;margin-bottom:10px;}
+  .emptytitle{font-weight:800;font-size:17px;margin-bottom:6px;}
+  .emptytext{color:var(--ink-dim);font-size:13.5px;max-width:300px;margin:0 auto;line-height:1.5;}
+  .spool{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px;margin-bottom:12px;}
+  .spool-top{display:flex;align-items:center;gap:11px;margin-bottom:11px;}
+  .dot{width:26px;height:26px;border-radius:50%;flex:none;border:2px solid rgba(255,255,255,.18);box-shadow:0 1px 4px rgba(0,0,0,.4);}
+  .spool-id{flex:1;min-width:0;}
+  .spool-name{font-weight:800;font-size:15px;}
+  .spool-meta{font-size:12px;color:var(--ink-dim);}
+  .mini{background:var(--panel2);border:1px solid var(--line);color:var(--ink-dim);font-size:11px;
+    padding:6px 11px;border-radius:8px;cursor:pointer;font-family:var(--mono);letter-spacing:.4px;}
+  .myset{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:11px;}
+  .rating{margin-left:auto;color:var(--accent2);font-size:14px;letter-spacing:1px;}
+  .bar{height:9px;background:var(--panel2);border-radius:20px;overflow:hidden;border:1px solid var(--line);}
+  .fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:20px;transition:width .4s;}
+  .fill.low{background:linear-gradient(90deg,var(--bad),#ff8aa0);}
+  .barlabel{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-dim);margin-top:6px;font-family:var(--mono);}
+  .lowtxt{color:var(--bad);font-weight:700;}
+
+  /* Spool form */
+  input[type=color]{padding:4px;cursor:pointer;}
+  .swatches{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:16px;}
+  .sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0;
+    position:relative;transition:.12s;box-shadow:0 1px 3px rgba(0,0,0,.4);}
+  .sw:active{transform:scale(.9);}
+  .sw.on{border-color:var(--ink);box-shadow:0 0 0 3px rgba(255,210,63,.55);}
+  .sw.custom{display:grid;place-items:center;overflow:hidden;}
+  .sw.custom input[type=color]{opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0;}
+  .stars{display:flex;gap:8px;font-size:30px;color:var(--line);margin-bottom:14px;cursor:pointer;}
+  .stars span{transition:.12s;}
+  .stars span.on{color:var(--accent2);text-shadow:0 0 10px rgba(255,210,63,.4);}
+  .stars span:active{transform:scale(1.2);}
+  .formbtns{display:flex;gap:9px;margin-top:6px;}
+  .save{flex:1;background:linear-gradient(145deg,var(--accent),var(--accent2));color:#1a1207;border:0;
+    font-weight:800;font-size:15px;padding:14px;border-radius:11px;cursor:pointer;}
+  .save:active{transform:scale(.99);}
+  .del{background:transparent;border:1px solid rgba(255,84,112,.5);color:var(--bad);font-weight:700;
+    padding:14px 18px;border-radius:11px;cursor:pointer;font-size:14px;}
+
+  /* Paywall */
+  .paywall{background:linear-gradient(160deg,rgba(255,210,63,.14),rgba(255,106,43,.06));
+    border:1px solid rgba(255,210,63,.4);border-radius:var(--radius);padding:18px;margin-bottom:16px;animation:fade .25s;}
+  .pwtitle{font-weight:800;font-size:16px;margin-bottom:7px;}
+  .pwtext{font-size:13.5px;color:var(--ink);opacity:.92;line-height:1.55;margin-bottom:14px;}
+  .pwtext b{color:var(--accent2);}
+  .pwbtns{display:flex;gap:9px;}
+  .pwbuy{flex:1;background:linear-gradient(145deg,var(--accent),var(--accent2));color:#1a1207;border:0;
+    font-weight:800;font-size:14px;padding:12px;border-radius:10px;cursor:pointer;}
+  .pwno{background:transparent;border:1px solid var(--line);color:var(--ink-dim);padding:12px 16px;border-radius:10px;cursor:pointer;}
+
+  /* Calculator */
+  .calc-entry{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px;cursor:pointer;transition:.15s;}
+  .calc-entry:active{transform:scale(.99);border-color:var(--accent);}
+  .ce-left{display:flex;align-items:center;gap:12px;}
+  .ce-ic{font-size:24px;}
+  .ce-title{font-weight:800;font-size:15px;}
+  .ce-sub{font-size:12px;color:var(--ink-dim);}
+  .ce-arr{font-size:18px;color:var(--accent2);}
+  .calctabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--panel);border:1px solid var(--line);
+    border-radius:11px;padding:5px;margin-bottom:14px;}
+  .calctabs button{border:0;background:transparent;color:var(--ink-dim);font-family:var(--sans);font-weight:700;
+    font-size:13px;padding:10px;border-radius:8px;cursor:pointer;transition:.15s;}
+  .calctabs button.on{background:linear-gradient(145deg,var(--accent),#ff8a4b);color:#1a1207;}
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .cmphd{font-family:var(--sans);font-weight:800;font-size:13px;margin-bottom:8px;color:var(--accent2);}
+  .cmpcol input{margin-bottom:10px;}
+  .unitrow{font-size:13px;color:var(--ink-dim);display:flex;align-items:center;gap:8px;margin-top:2px;}
+  .unitrow select{width:auto;margin:0;padding:8px 10px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo">DN</div>
+      <div>
+        <h1>Dialed Nozzle</h1>
+        <div class="sub">3D Print &amp; Pen Settings</div>
+      </div>
+    </div>
+    <div class="toggle" id="toggle">
+      <button data-dev="printer" class="on"><span class="ic">🖨️</span> 3D Printer</button>
+      <button data-dev="pen"><span class="ic">✏️</span> 3D Pen</button>
+    </div>
+  </header>
+
+  <div class="tabwrap">
+    <nav class="tabs" id="tabs">
+      <button data-tab="check" class="on">Compatibility</button>
+      <button data-tab="ref">Reference</button>
+      <button data-tab="fix">Troubleshoot</button>
+      <button data-tab="spools">My Spools</button>
+    </nav>
+  </div>
+
+  <main>
+    <!-- COMPATIBILITY CHECKER -->
+    <section class="view on" id="view-check">
+      <div id="check-pen">
+        <h2 class="section">Will my filament work?</h2>
+        <p class="lead">The thing no other app answers: pick your pen and the filament you want to use. Find out if it fits — and if you're overpaying for branded refills.</p>
+        <div class="card">
+          <label class="fld">Your pen</label>
+          <div class="selwrap"><select id="penSel"></select></div>
+          <label class="fld">Filament you want to use</label>
+          <div class="selwrap"><select id="filSel">
+            <option value="std175">Cheap 1.75mm spool (printer/3rd-party)</option>
+            <option value="branded">The pen's own branded refills</option>
+            <option value="pcl">PCL kid-safe sticks</option>
+          </select></div>
+        </div>
+        <div id="verdict"></div>
+        <div class="savebanner" id="saveBanner"></div>
+        <div class="disclaimer" style="margin-top:12px">⚠ Always confirm against your pen's own manual and the filament label before buying. Diameters and temp ranges vary by model — the manufacturer's spec wins, and using unapproved filament can void a warranty.</div>
+      </div>
+
+      <div id="check-printer">
+        <h2 class="section">Filament chooser</h2>
+        <p class="lead">Pick what you're printing and get the material best suited to it, with a starting profile. Tap any material in the Reference tab for full settings.</p>
+        <div class="card">
+          <label class="fld">What are you making?</label>
+          <div class="selwrap"><select id="useSel">
+            <option value="display">Display model / decorative</option>
+            <option value="shiny">Shiny / satin showpiece</option>
+            <option value="woodlook">Wood / natural look</option>
+            <option value="glow">Glow in the dark</option>
+            <option value="functional">Functional / mechanical part</option>
+            <option value="strong">Stiff & lightweight</option>
+            <option value="outdoor">Outdoor / UV exposed</option>
+            <option value="flexible">Flexible / bendy part</option>
+            <option value="easy">Just learning / easiest</option>
+          </select></div>
+        </div>
+        <div id="recOut"></div>
+      </div>
+    </section>
+
+    <!-- REFERENCE -->
+    <section class="view" id="view-ref">
+      <h2 class="section" id="refTitle">Material reference</h2>
+      <div class="disclaimer">⚠ Starting points only. Always check the spool's label — the manufacturer's number wins. Adjust in 5°C steps and watch the result.</div>
+      <div id="refList" style="margin-top:14px;"></div>
+    </section>
+
+    <!-- TROUBLESHOOT -->
+    <section class="view" id="view-fix">
+      <h2 class="section">Troubleshooter</h2>
+      <p class="lead" id="fixLead">Pick the problem you're seeing.</p>
+      <div id="symList"></div>
+      <div id="fixDetail" style="display:none;"></div>
+    </section>
+
+    <!-- MY SPOOLS -->
+    <section class="view" id="view-spools">
+      <div id="spoolList"></div>
+      <div id="spoolForm" style="display:none;"></div>
+      <div id="calcWrap"></div>
+    </section>
+  </main>
+
+  <footer>DIALED NOZZLE · data verified vs manufacturer sources · always confirm against your filament's label</footer>
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+const PRINTER_MATS = [
+  {grp:"core",n:"PLA",lvl:"beg",noz:"190–220°C (start 200)",bed:"50–60°C (start 55)",fan:"100% after layer 2",enc:"Not needed",dry:"No",best:"Display models, prototypes, first prints",note:"Easiest filament. Brittle, low heat resistance — don't leave in a hot car."},
+  {grp:"core",n:"PLA+",lvl:"beg",noz:"200–230°C (start 210)",bed:"50–60°C (start 55)",fan:"100% after layer 2",enc:"Not needed",dry:"No",best:"Tougher light functional parts",note:"Slightly hotter than PLA; less brittle. A drop-in upgrade if standard PLA snaps on you."},
+  {grp:"core",n:"PETG",lvl:"int",noz:"230–250°C (start 240)",bed:"70–80°C (start 75)",fan:"30–50%",enc:"Helps",dry:"Helps",best:"Functional parts, outdoor-ish, food-adjacent",note:"Stronger than PLA, easier than ABS. Let bed cool before removing. Stringy if too hot or wet."},
+  {grp:"core",n:"ABS",lvl:"adv",noz:"230–260°C (start 245)",bed:"95–110°C (start 100)",fan:"Off / 0–20%",enc:"Required",dry:"Helps",best:"Strong, heat-resistant parts",note:"Warps easily. Fumes — ventilate. Never below ~210°C."},
+  {grp:"core",n:"ASA",lvl:"adv",noz:"240–260°C (start 250)",bed:"90–110°C (start 100)",fan:"Off / 10–20%",enc:"Required",dry:"Helps",best:"Outdoor parts — UV resistant",note:"Like ABS but won't yellow in sun. Styrene fumes — ventilate well."},
+  {grp:"core",n:"TPU (flexible)",lvl:"int",noz:"220–250°C (start 230)",bed:"40–60°C (start 50)",fan:"20–50%",enc:"Not needed",dry:"Helps",best:"Flexible parts — cases, gaskets, straps",note:"Print SLOW (15–30 mm/s) or it jams. Direct-drive extruder strongly preferred."},
+  {grp:"core",n:"Nylon (PA)",lvl:"adv",noz:"240–270°C (start 255)",bed:"70–90°C (start 80)",fan:"Off / low",enc:"Required",dry:"YES — mandatory",best:"Strong, wear-resistant — gears, hinges",note:"Dry right before printing even if new. Most moisture-sensitive common filament."},
+  {grp:"core",n:"Polycarbonate (PC)",lvl:"adv",noz:"250–290°C (start 270)",bed:"90–110°C (start 100)",fan:"Off / low",enc:"Required",dry:"Yes",best:"Very strong, heat-resistant engineering parts",note:"Needs an all-metal hotend. One of the hardest filaments."},
+
+  {grp:"spec",n:"Wood-fill PLA",lvl:"int",noz:"180–210°C (start 195)",bed:"40–60°C (start 50)",fan:"100% after layer 2",enc:"Not needed",dry:"No",best:"Decorative pieces that look & feel like real wood",
+   what:"PLA mixed with real wood fibers (bamboo, cork, cedar…). Prints almost like normal PLA but comes out looking like timber — and you can sand and stain it like wood.",
+   note:"Use a 0.4mm+ and ideally HARDENED nozzle — wood particles clog and wear brass tips. Trick: vary the temp during a print to get darker/lighter grain bands."},
+  {grp:"spec",n:"Silk PLA",lvl:"beg",noz:"200–220°C (start 215)",bed:"50–60°C (start 55)",fan:"100% after layer 2",enc:"Not needed",dry:"No",best:"Shiny, satin, almost-metallic decorative prints",
+   what:"PLA with light-diffusing additives that give a glossy, satin sheen straight off the bed — no painting needed.",
+   note:"Print near the hotter end and at a steady medium speed for the best shine. Additives can cause occasional clogs/under-extrusion; a temp tower per spool helps."},
+  {grp:"spec",n:"Glow-in-the-dark PLA",lvl:"int",noz:"200–220°C (start 210)",bed:"60–75°C (start 70)",fan:"100% after layer 2",enc:"Not needed",dry:"No",best:"Toys, signs, anything fun in the dark",
+   what:"PLA loaded with phosphorescent powder. Charge it under light, then it glows for a couple of minutes. Green glows brightest.",
+   note:"Abrasive — use a HARDENED nozzle. Sticks to the bed less well than plain PLA, so bump bed temp to ~70–75°C. Thicker walls glow longer."},
+  {grp:"spec",n:"Carbon-fiber PLA (PLA-CF)",lvl:"int",noz:"210–240°C (start 225)",bed:"50–60°C (start 55)",fan:"50–100%",enc:"Not needed",dry:"Helps",best:"Stiff, lightweight parts with a premium matte look",
+   what:"PLA reinforced with chopped carbon fiber for extra stiffness, less warping, and a classy matte finish. (\"Carbon fiber\" here means a base plastic with fibers added — not solid carbon.)",
+   note:"Very abrasive — a HARDENED steel nozzle is essentially required, 0.5–0.6mm recommended. Stiffer but more brittle than plain PLA."},
+  {grp:"spec",n:"Marble / stone PLA",lvl:"beg",noz:"190–220°C (start 205)",bed:"50–60°C (start 55)",fan:"100% after layer 2",enc:"Not needed",dry:"No",best:"Vases, busts, anything wanting a stone look",
+   what:"PLA with fine mineral speckles that mimic polished marble or stone. Prints like PLA with a textured, organic finish.",
+   note:"Avoid very tiny (0.2mm) nozzles — the particles prefer a 0.4mm+ opening. Mildly abrasive."},
+  {grp:"spec",n:"PVA (dissolvable support)",lvl:"adv",noz:"180–210°C (start 195)",bed:"45–60°C (start 55)",fan:"Off / low",enc:"Not needed",dry:"YES — very hygroscopic",best:"Dissolvable supports on dual-extruder printers",
+   what:"A support material that dissolves completely in water, leaving a clean surface where supports used to be. Not for the model itself — for the scaffolding.",
+   note:"Needs a 2nd extruder. Soak the finished print 12–24h to dissolve. Soaks up air moisture fast — store sealed with desiccant."},
+  {grp:"spec",n:"HIPS (dissolvable / light)",lvl:"adv",noz:"220–245°C (start 235)",bed:"90–110°C (start 100)",fan:"Off / low",enc:"Required",dry:"Helps",best:"ABS supports, or light durable parts",
+   what:"A light, ABS-like plastic often used as dissolvable support for ABS (dissolves in limonene), or as a model material on its own.",
+   note:"Behaves like ABS — wants an enclosure and ventilation. Fumes when hot."}
+];
+
+const PEN_MATS = [
+  {n:"PLA (in a pen)",lvl:"beg",noz:"160–190°C (start 175)",feed:"Medium; slow for detail",best:"General doodling, jewelry, detail work",note:"Easiest in a pen. If it keeps oozing after you release the button, lower the temp."},
+  {n:"ABS (in a pen)",lvl:"int",noz:"190–220°C (start 210)",feed:"Medium–fast; extrudes thicker",best:"Sturdier builds, vertical structures",note:"Slight fumes — ventilate. Sets faster than PLA. Can warp/shrink as it cools."},
+  {n:"PCL (kid-safe)",lvl:"beg",noz:"~60–70°C, pen-controlled",feed:"N/A — single-button kid pens",best:"Children ~6+, classrooms",note:"Special low-temp plastic; the pen sets the temperature. Stays soft 30–60s so kids can mold it."},
+  {n:"Other 1.75mm (wood/PETG)",lvl:"int",noz:"Start low end of its printer range",feed:"Slow, then adjust",best:"Experimentation",note:"Smoke/bubbling = too hot. Thick & straining = too cold. Adjust 5°C at a time."},
+  {n:"Wood / Metal / Flexy (pen)",lvl:"int",noz:"Pen-managed (Flow/PRO+ presets)",feed:"Per material preset",best:"Textured, real-wood-look or bendy doodles",
+   what:"Yes — pens do specialty filament too. The 3Doodler PRO+ handles wood, metal, flexible (FLEXY) and nylon strands; the Flow takes wood-infused 1.75mm. Wood comes out sandable with a real grain.",
+   note:"Only on pens that explicitly support these (PRO+, Flow). Don't force specialty strands into a basic PLA-only pen."}
+];
+
+const PENS = [
+  {id:"create",label:"3Doodler Create+ / PRO+",dia:"3mm",std:false,kid:false,
+    temp:{branded:"Pen-managed per material"},src:"3Doodler official FAQ"},
+  {id:"start",label:"3Doodler Start+",dia:"2.5mm",std:false,kid:true,
+    temp:{pcl:"Fixed low-temp (pen-managed)"},src:"3Doodler official FAQ"},
+  {id:"flow",label:"3Doodler Flow",dia:"1.75mm",std:true,kid:false,range:"160–220°C",
+    temp:{std175:"PLA ~175°C · ABS ~210°C",branded:"Per refill type"},src:"3Doodler Intl FAQ"},
+  {id:"mynt",label:"MYNT3D Professional / PRO",dia:"1.75mm",std:true,kid:false,range:"130–240°C",
+    temp:{std175:"PLA ~175°C · ABS ~210°C",branded:"Same — any 1.75mm in range"},src:"MYNT3D manual + product page"},
+  {id:"scrib",label:"SCRIB3D (standard)",dia:"1.75mm",std:true,kid:false,range:"adjustable",
+    temp:{std175:"PLA ~175°C · ABS ~210°C"},src:"3rd-party refill listings (temp range ❓ verify)"},
+  {id:"scribjr",label:"SCRIB3D Junior",dia:"PCL stick",std:false,kid:true,
+    temp:{pcl:"Fixed low-temp, no hot parts"},src:"Retail listing (❓ verify diameter)"},
+  {id:"myfirst",label:"myFirst 3dPen (Make/Dolphin)",dia:"PCL ~1.75mm",std:false,kid:true,
+    temp:{pcl:"~60°C, 2 preset levels, touch-safe"},src:"Official product spec"},
+  {id:"generic",label:"Generic no-name OLED pen",dia:"1.75mm",std:true,kid:false,range:"130–240°C",
+    temp:{std175:"PLA ~175°C · ABS ~210°C"},src:"Representative retail listings"}
+];
+
+const PRINTER_FIX = [
+  {s:"Stringing (hairs between parts)",f:["Dry the filament (the #1 cause, esp. PETG/Nylon/TPU)","Lower nozzle temp 5°C, retest","Increase retraction distance slightly","Increase retraction / travel speed","Enable wipe-before-travel or Z-hop in your slicer"]},
+  {s:"Warping (corners lift)",f:["Raise bed temp 5°C","Use a brim or raft for grip","Kill drafts — use/close an enclosure (vital for ABS/ASA/PC)","Clean bed with isopropyl alcohol and re-level","Slow the first layer","Add a glue stick / adhesion aid"]},
+  {s:"Poor first-layer adhesion",f:["Re-level the bed / check nozzle gap (most common cause)","Clean bed with isopropyl alcohol","Raise bed temp 5°C","Slow first-layer speed","Lower first layer height slightly (more squish)","Add adhesion aid"]},
+  {s:"Layers separating / cracking",f:["Raise nozzle temp 5°C (layers need heat to fuse)","Reduce cooling fan % (esp. PETG/ABS/ASA)","Use an enclosure to keep heat even","Dry the filament","Slow the print down"]},
+  {s:"Clogging / under-extrusion",f:["Raise nozzle temp 5°C","Check for a partial clog — cold pull / clean nozzle","Dry the filament","Slow print speed","Check filament path/spool isn't tangled"]},
+  {s:"Blobs / zits on surface",f:["Lower nozzle temp 5°C","Tune retraction (slightly more)","Enable wipe-before-travel / coasting","Check for wet filament"]}
+];
+
+const PEN_FIX = [
+  {s:"Plastic oozes after I release the button",f:["Lower the temperature a few degrees (esp. PLA)","Release the button slightly earlier — there's always lag","Let the pen reach its set temp fully before drawing"]},
+  {s:"Feed is straining / won't come out",f:["Raise temp 5°C (cold plastic is hard to push)","Reverse/back out the filament, cut a clean end, reload","Check for a clog — raise temp to melt, or clear the nozzle","Use a proper 2A power supply, not a laptop/USB port"]},
+  {s:"Smoke or bubbling from the nozzle",f:["Temperature is too high — lower it (the universal 'too hot' sign)","Check you set the right material (ABS runs hotter than PLA)"]},
+  {s:"Clogged nozzle",f:["Raise temp slightly to melt the clog through","Back filament out, cut a clean end, reload","If it won't clear, open the service door / inspect or replace nozzle"]},
+  {s:"Lines too thin or too thick",f:["Too thin → slow your hand, or increase feed speed","Too thick → speed up your hand, or decrease feed speed","Fine detail → lower temp slightly for faster setting"]}
+];
+
+const PRINTER_REC = {
+  display:{m:"PLA",why:"Cheap, easy, crisp detail, great surface finish for things that just sit on a shelf."},
+  shiny:{m:"Silk PLA",why:"Glossy satin sheen straight off the bed — no painting. Prints almost like normal PLA."},
+  woodlook:{m:"Wood-fill PLA",why:"Real wood fibers — comes out looking and feeling like timber, and you can sand & stain it. Use a hardened nozzle."},
+  glow:{m:"Glow-in-the-dark PLA",why:"Charge it under light and it glows. Green glows brightest. Abrasive — use a hardened nozzle."},
+  functional:{m:"PETG",why:"Stronger and tougher than PLA, far easier than ABS. The everyday functional sweet spot."},
+  strong:{m:"Carbon-fiber PLA (PLA-CF)",why:"Stiffer and lighter than plain PLA with a premium matte finish. Needs a hardened steel nozzle."},
+  outdoor:{m:"ASA",why:"UV-resistant — won't yellow or get brittle in sun, unlike PLA/ABS."},
+  flexible:{m:"TPU (flexible)",why:"The flexible option. Print slow and ideally with a direct-drive extruder."},
+  easy:{m:"PLA",why:"The most forgiving filament. No enclosure, low temps, hard to mess up."}
+};
+
+/* ---------------- STATE ---------------- */
+let device="printer", tab="check";
+
+/* ---------------- RENDER ---------------- */
+function applyDevice(){
+  document.getElementById("check-pen").style.display   = device==="pen"?"block":"none";
+  document.getElementById("check-printer").style.display = device==="printer"?"block":"none";
+  document.getElementById("refTitle").textContent = device==="pen"?"3D Pen material reference":"3D Printer material reference";
+  renderRef(); renderFix(); renderCheck();
+}
+
+function renderCheck(){
+  if(device==="pen") runPenCheck();
+  else runPrinterRec();
+}
+
+/* Pen compatibility */
+function fillPenSelect(){
+  const s=document.getElementById("penSel");
+  s.innerHTML=PENS.map(p=>`<option value="${p.id}">${p.label}</option>`).join("");
+}
+function runPenCheck(){
+  const pen=PENS.find(p=>p.id===document.getElementById("penSel").value)||PENS[0];
+  const fil=document.getElementById("filSel").value;
+  const out=document.getElementById("verdict");
+  const bn=document.getElementById("saveBanner");
+  bn.classList.remove("show");
+  let cls,emoji,title,body="",temp="";
+
+  const filIs175 = fil==="std175";
+  const penIs175 = pen.dia==="1.75mm";
+
+  if(fil==="pcl"){
+    if(pen.kid){cls="v-kid";emoji="🧒";title="Yes — and it's the safe choice";
+      body=`The ${pen.label} is built for low-temp PCL. Melts cool, safe for young kids.`;temp=pen.temp.pcl||"";}
+    else{cls="v-bad";emoji="❌";title="Wrong material";
+      body=`The ${pen.label} uses hot PLA/ABS, not low-temp PCL sticks. PCL won't behave correctly in a high-temp pen.`;}
+  } else if(fil==="branded"){
+    cls="v-good";emoji="✅";title="Yes — branded always works";
+    body=`Branded refills are made for the ${pen.label}. This is the no-risk option (just the priciest).`;
+    temp=pen.temp.branded||pen.temp.pcl||pen.temp.std175||"";
+  } else { // std175
+    if(penIs175 && pen.std){cls="v-good";emoji="✅";title="Yes — and stop overpaying";
+      body=`The ${pen.label} takes standard 1.75mm filament${pen.range?` that melts within ${pen.range}`:""}. You do NOT need branded refills — any in-range 1.75mm spool works.`;
+      temp=pen.temp.std175||"";
+      bn.innerHTML=`💰 <b>Money tip:</b> A branded refill runs far more per metre than a standard spool. Use the Reference tab temps and a cheap 1.75mm spool — savings add up fast over a year.`;
+      bn.classList.add("show");
+    } else if(!penIs175){cls="v-bad";emoji="❌";title="Won't fit — wrong diameter";
+      body=`Your ${pen.label} needs <b>${pen.dia}</b> filament. Cheap 1.75mm is the wrong size — it's too thin to feed properly, and using non-approved material can void the warranty.`;
+    } else {cls="v-warn";emoji="⚠️";title="Risky — check first";
+      body=`The ${pen.label} is 1.75mm but isn't confirmed open to third-party filament. Try a known-good brand cautiously.`;temp=pen.temp.std175||"";}
+  }
+
+  out.innerHTML=`<div class="verdict ${cls}">
+    <div class="big"><span class="emoji">${emoji}</span>${title}</div>
+    <p>${body}</p>
+    ${temp?`<div><span class="tempchip">SET: ${temp}</span></div>`:""}
+    <div class="src">Diameter: ${pen.dia} · Source: ${pen.src}</div>
+  </div>`;
+}
+
+/* Printer recommendation */
+function runPrinterRec(){
+  const use=document.getElementById("useSel").value;
+  const rec=PRINTER_REC[use];
+  const mat=PRINTER_MATS.find(m=>m.n===rec.m);
+  document.getElementById("recOut").innerHTML=`<div class="verdict v-good">
+    <div class="big"><span class="emoji">🎯</span>Use ${rec.m}</div>
+    <p>${rec.why}</p>
+    <div><span class="tempchip">NOZZLE ${mat.noz}</span><span class="tempchip">BED ${mat.bed}</span></div>
+    <div class="src">Tap “${rec.m}” in the Reference tab for the full profile.</div>
+  </div>`;
+}
+
+/* Reference */
+function matCard(m){
+  const rows = device==="pen"
+    ? [["Nozzle",m.noz],["Feed speed",m.feed],["Best for",m.best]]
+    : [["Nozzle",m.noz],["Bed",m.bed],["Cooling fan",m.fan],["Enclosure",m.enc],["Dry first",m.dry],["Best for",m.best]];
+  const lvlTxt={beg:"Beginner",int:"Intermediate",adv:"Advanced"}[m.lvl];
+  return `<div class="card">
+    <div class="mathead"><span class="name">${m.n}</span><span class="pill ${m.lvl}">${lvlTxt}</span></div>
+    ${m.what?`<div class="whatis">${m.what}</div>`:""}
+    ${rows.map(r=>`<div class="matrow"><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("")}
+    <div class="note">${m.note}</div>
+  </div>`;
+}
+function renderRef(){
+  const mats = device==="pen"?PEN_MATS:PRINTER_MATS;
+  const el=document.getElementById("refList");
+  if(device==="pen"){
+    el.innerHTML = mats.map(matCard).join("");
+    return;
+  }
+  const core = mats.filter(m=>m.grp==="core");
+  const spec = mats.filter(m=>m.grp==="spec");
+  el.innerHTML =
+    `<div class="grouphead">Core filaments</div>` + core.map(matCard).join("") +
+    `<div class="grouphead">Specialty filaments <span class="ghsub">— you can print these too</span></div>` +
+    `<div class="specintro">Most specialty filaments are just <b>PLA with something mixed in</b>, so they print at near-PLA temperatures. The catch: gritty ones (wood, glow, carbon-fiber) wear out a normal brass nozzle — a cheap <b>hardened steel nozzle</b> fixes that. Here's what's out there:</div>` +
+    spec.map(matCard).join("");
+}
+
+/* Troubleshooter */
+function renderFix(){
+  const list = device==="pen"?PEN_FIX:PRINTER_FIX;
+  document.getElementById("fixDetail").style.display="none";
+  document.getElementById("symList").style.display="block";
+  document.getElementById("fixLead").textContent= device==="pen"
+    ? "Pen problems — pick what you're seeing."
+    : "Printer problems — pick what you're seeing.";
+  document.getElementById("symList").innerHTML=list.map((x,i)=>
+    `<button class="symbtn" onclick="showFix(${i})">${x.s}<span class="arr">→</span></button>`).join("");
+}
+function showFix(i){
+  const list = device==="pen"?PEN_FIX:PRINTER_FIX;
+  const x=list[i];
+  const tail = device==="pen"
+    ? "Still stuck? Smoke = too hot, straining = too cold. Adjust 5°C at a time."
+    : "Still stuck? Print a temperature tower to find your filament's exact sweet spot.";
+  document.getElementById("symList").style.display="none";
+  const d=document.getElementById("fixDetail");
+  d.style.display="block";
+  d.innerHTML=`<button class="backbtn" onclick="renderFix()">← all problems</button>
+    <div class="card"><div class="mathead"><span class="name" style="font-size:16px">${x.s}</span></div>
+    <ol class="fixlist">${x.f.map(f=>`<li>${f}</li>`).join("")}</ol>
+    <div class="disclaimer" style="margin-top:14px">${tail}</div></div>`;
+}
+
+/* ---------------- SPOOL LOG ---------------- */
+const SPOOL_COLORS = [
+  {name:"Black",hex:"#1c1c1e"},{name:"White",hex:"#f4f4f5"},{name:"Grey",hex:"#9aa0a6"},
+  {name:"Red",hex:"#e5392f"},{name:"Orange",hex:"#ff6a2b"},{name:"Yellow",hex:"#ffd23f"},
+  {name:"Green",hex:"#2ecf6b"},{name:"Teal",hex:"#19c2c2"},{name:"Blue",hex:"#2f7bff"},
+  {name:"Purple",hex:"#8b5cf6"},{name:"Pink",hex:"#ff5fa2"},{name:"Brown",hex:"#8a5a2b"},
+  {name:"Silk gold",hex:"#d4af37"},{name:"Silk silver",hex:"#c0c4cc"},{name:"Natural",hex:"#e8dcc0"},{name:"Glow",hex:"#b6ff9e"}
+];
+const FREE_LIMIT = 3;
+let PAID = false;
+let spools = [];
+let editId = null;
+
+let memStore = null; // fallback if localStorage is blocked
+function loadSpools(){
+  try{ spools = JSON.parse(localStorage.getItem("ss_spools")||"[]"); }
+  catch(e){ spools = memStore || []; }
+}
+function saveSpools(){
+  memStore = spools;
+  try{ localStorage.setItem("ss_spools", JSON.stringify(spools)); }catch(e){}
+}
+function matNames(){
+  return (device==="pen"?PEN_MATS:PRINTER_MATS).map(m=>m.n);
+}
+function startTemp(matName){
+  const m=[...PRINTER_MATS,...PEN_MATS].find(x=>x.n===matName);
+  if(!m)return "";
+  const grab=s=>{const z=/start\s*([\d–-]+)/i.exec(s);return z?z[1]:(s.match(/[\d]+/)?s.match(/[\d–-]+/)[0]:"");};
+  return m.noz?grab(m.noz):"";
+}
+
+function renderSpools(){
+  const list=document.getElementById("spoolList");
+  const form=document.getElementById("spoolForm");
+  const calc=document.getElementById("calcWrap");
+  form.style.display="none"; if(calc) calc.style.display="none"; list.style.display="block";
+
+  const head=`<div class="spoolhead">
+      <div><h2 class="section" style="margin:0">My Spools</h2>
+      <div class="counter">${spools.length} / ${FREE_LIMIT} on the free plan</div></div>
+      <button class="addbtn" id="addSpool">+ Add spool</button>
+    </div>
+    <p class="lead">Your personal log of what actually worked on <i>your</i> machine — the temps the label never tells you. This is the bit no website can give you.</p>`;
+
+  if(spools.length===0){
+    list.innerHTML = head + `<div class="empty">
+        <div class="emptyic">🧵</div>
+        <div class="emptytitle">No spools yet</div>
+        <div class="emptytext">Add your first spool after a good print — record the temp that worked, and you'll never hunt for it again.</div>
+      </div>`;
+  } else {
+    list.innerHTML = head + spools.map(s=>{
+      const pct = Math.max(0, Math.min(100, Math.round((s.remain/s.total)*100||0)));
+      const low = pct<=15;
+      const stars = "★".repeat(s.rating||0)+"☆".repeat(5-(s.rating||0));
+      const swatch = s.color||"#888";
+      return `<div class="spool">
+        <div class="spool-top">
+          <span class="dot" style="background:${swatch}"></span>
+          <div class="spool-id">
+            <div class="spool-name">${esc(s.brand||"Unknown")} · ${esc(s.mat||"")}</div>
+            <div class="spool-meta">${esc(s.colorName||"")}${s.device?` · ${s.device}`:""}</div>
+          </div>
+          <button class="mini" onclick="editSpool('${s.id}')">edit</button>
+        </div>
+        <div class="myset">
+          ${s.myNoz?`<span class="tempchip">MY NOZZLE ${esc(s.myNoz)}</span>`:""}
+          ${s.myBed?`<span class="tempchip">MY BED ${esc(s.myBed)}</span>`:""}
+          ${s.stars?``:``}<span class="rating">${stars}</span>
+        </div>
+        <div class="bar"><div class="fill ${low?'low':''}" style="width:${pct}%"></div></div>
+        <div class="barlabel"><span>${s.remain||0} g left</span><span class="${low?'lowtxt':''}">${low?'running low':pct+'%'}</span></div>
+        ${s.notes?`<div class="note">📝 ${esc(s.notes)}</div>`:""}
+      </div>`;
+    }).join("");
+  }
+  const ab=document.getElementById("addSpool");
+  if(ab) ab.onclick=()=>{
+    if(!PAID && spools.length>=FREE_LIMIT){ showPaywall(); return; }
+    openForm(null);
+  };
+  // calculator entry
+  list.insertAdjacentHTML("beforeend",`
+    <div class="calc-entry" onclick="openCalc()">
+      <div class="ce-left"><div class="ce-ic">🧮</div>
+        <div><div class="ce-title">Cost calculator</div>
+        <div class="ce-sub">What a print costs · how much you'd save vs branded refills</div></div></div>
+      <span class="ce-arr">${PAID?'→':'🔒'}</span>
+    </div>`);
+}
+
+function showPaywall(){
+  const list=document.getElementById("spoolList");
+  list.insertAdjacentHTML("afterbegin",`<div class="paywall" id="pw">
+    <div class="pwtitle">⭐ Unlock unlimited spools</div>
+    <div class="pwtext">The free plan tracks ${FREE_LIMIT} spools. Unlock <b>unlimited spools, CSV backup, and the cost-per-print calculator</b> with a one-time purchase — no subscription.</div>
+    <div class="pwbtns">
+      <button class="pwbuy" onclick="PAID=true;document.getElementById('pw').remove();renderSpools();">Unlock — $3.99 (demo)</button>
+      <button class="pwno" onclick="document.getElementById('pw').remove()">Not now</button>
+    </div>
+  </div>`);
+}
+
+function openForm(id){
+  editId=id;
+  const s = id ? spools.find(x=>x.id===id) : {device: device==="pen"?"3D Pen":"3D Printer", total:1000, remain:1000, rating:0, color:"#ff6a2b"};
+  const list=document.getElementById("spoolList");
+  const form=document.getElementById("spoolForm");
+  list.style.display="none"; form.style.display="block";
+  const opts=matNames().map(n=>`<option ${s.mat===n?"selected":""}>${n}</option>`).join("");
+  const bedRow = device==="pen" ? "" : `
+      <label class="fld">My bed temp (what worked)</label>
+      <input id="f_bed" value="${esc(s.myBed||'')}" placeholder="e.g. 60°C">`;
+  form.innerHTML=`
+    <button class="backbtn" onclick="renderSpools()">← my spools</button>
+    <h2 class="section">${id?"Edit spool":"New spool"}</h2>
+    <div class="card">
+      <label class="fld">Brand</label>
+      <input id="f_brand" value="${esc(s.brand||'')}" placeholder="e.g. Overture, Hatchbox">
+      <label class="fld">Material</label>
+      <div class="selwrap"><select id="f_mat">${opts}</select></div>
+      <label class="fld">Colour name</label>
+      <input id="f_colorName" value="${esc(s.colorName||'')}" placeholder="e.g. Matte Black">
+      <label class="fld">Colour swatch</label>
+      <div class="swatches" id="f_swatches">
+        ${SPOOL_COLORS.map(c=>`<button type="button" class="sw ${s.color===c.hex?'on':''}" data-hex="${c.hex}" title="${c.name}" style="background:${c.hex}"></button>`).join("")}
+        <label class="sw custom" title="Custom" style="background:conic-gradient(red,orange,yellow,lime,cyan,blue,magenta,red)">
+          <input id="f_color" type="color" value="${s.color||'#ff6a2b'}">
+        </label>
+      </div>
+      <label class="fld">My nozzle temp (what actually worked)</label>
+      <input id="f_noz" value="${esc(s.myNoz||'')}" placeholder="auto-suggested from reference">
+      ${bedRow}
+      <label class="fld">Spool weight — total grams</label>
+      <input id="f_total" type="number" value="${s.total||1000}">
+      <label class="fld">Grams remaining</label>
+      <input id="f_remain" type="number" value="${s.remain!=null?s.remain:1000}">
+      <label class="fld">How well did it print? (1–5)</label>
+      <div class="stars" id="f_stars">${[1,2,3,4,5].map(n=>`<span data-n="${n}" class="${(s.rating||0)>=n?'on':''}">★</span>`).join("")}</div>
+      <label class="fld">Notes</label>
+      <input id="f_notes" value="${esc(s.notes||'')}" placeholder="e.g. stringy until I dried it">
+      <div class="formbtns">
+        <button class="save" onclick="saveForm()">${id?"Save changes":"Add spool"}</button>
+        ${id?`<button class="del" onclick="delSpool('${id}')">Delete</button>`:""}
+      </div>
+    </div>`;
+  // star picker
+  let chosen = s.rating||0;
+  const sc=document.getElementById("f_stars");
+  sc.querySelectorAll("span").forEach(sp=>{
+    sp.onclick=()=>{ chosen=+sp.dataset.n; sc.querySelectorAll("span").forEach(x=>x.classList.toggle("on",+x.dataset.n<=chosen)); };
+  });
+  sc.dataset.val=chosen;
+  // colour swatches
+  const swWrap=document.getElementById("f_swatches");
+  const colorIn=document.getElementById("f_color");
+  swWrap.querySelectorAll(".sw[data-hex]").forEach(b=>{
+    b.onclick=()=>{ colorIn.value=b.dataset.hex;
+      swWrap.querySelectorAll(".sw").forEach(x=>x.classList.remove("on")); b.classList.add("on"); };
+  });
+  colorIn.oninput=()=>{ swWrap.querySelectorAll(".sw").forEach(x=>x.classList.remove("on"));
+    swWrap.querySelector(".sw.custom").classList.add("on"); };
+  // auto-suggest nozzle temp when material changes (only if field empty)
+  const matSel=document.getElementById("f_mat");
+  const nozIn=document.getElementById("f_noz");
+  const fill=()=>{ if(!nozIn.value.trim()) nozIn.placeholder = startTemp(matSel.value)?("try "+startTemp(matSel.value)+"°C"):"e.g. 200°C"; };
+  matSel.onchange=fill; fill();
+}
+
+function saveForm(){
+  const g=id=>document.getElementById(id);
+  const chosen = +document.getElementById("f_stars").querySelectorAll("span.on").length;
+  const obj={
+    id: editId || ("s"+Date.now()),
+    device: device==="pen"?"3D Pen":"3D Printer",
+    brand:g("f_brand").value.trim(),
+    mat:g("f_mat").value,
+    colorName:g("f_colorName").value.trim(),
+    color:g("f_color").value,
+    myNoz:g("f_noz").value.trim(),
+    myBed:g("f_bed")?g("f_bed").value.trim():"",
+    total:+g("f_total").value||1000,
+    remain:+g("f_remain").value||0,
+    rating:chosen,
+    notes:g("f_notes").value.trim()
+  };
+  if(editId){ spools = spools.map(x=>x.id===editId?obj:x); }
+  else { spools.push(obj); }
+  saveSpools(); renderSpools();
+}
+function editSpool(id){ openForm(id); }
+function delSpool(id){ spools = spools.filter(x=>x.id!==id); saveSpools(); renderSpools(); }
+function esc(s){ return (s+"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------- COST CALCULATOR ---------------- */
+function money(n){ return "$"+(Math.round(n*100)/100).toFixed(2); }
+
+function openCalc(){
+  if(!PAID){ showPaywall(); return; }
+  const list=document.getElementById("spoolList");
+  const form=document.getElementById("spoolForm");
+  const calc=document.getElementById("calcWrap");
+  list.style.display="none"; form.style.display="none"; calc.style.display="block";
+  const spoolOpts = spools.length
+    ? `<option value="">— manual entry —</option>`+spools.map(s=>`<option value="${s.id}">${esc(s.brand||'Spool')} · ${esc(s.mat||'')}</option>`).join("")
+    : `<option value="">— manual entry —</option>`;
+  calc.innerHTML=`
+    <button class="backbtn" onclick="document.getElementById('calcWrap').style.display='none';renderSpools();">← my spools</button>
+    <h2 class="section">Cost calculator</h2>
+    <div class="calctabs">
+      <button id="ct-print" class="on" onclick="calcMode('print')">Cost of a print</button>
+      <button id="ct-save" onclick="calcMode('save')">Branded vs standard</button>
+    </div>
+
+    <div id="calc-print">
+      <div class="card">
+        <label class="fld">Use a saved spool (optional)</label>
+        <div class="selwrap"><select id="c_spool" onchange="prefillSpool()">${spoolOpts}</select></div>
+        <label class="fld">Spool price</label>
+        <input id="c_price" type="number" inputmode="decimal" value="22" oninput="calcPrint()">
+        <label class="fld">Spool size (grams)</label>
+        <input id="c_size" type="number" inputmode="decimal" value="1000" oninput="calcPrint()">
+        <label class="fld">Grams used in this print</label>
+        <input id="c_used" type="number" inputmode="decimal" value="35" oninput="calcPrint()">
+      </div>
+      <div id="printOut"></div>
+    </div>
+
+    <div id="calc-save" style="display:none;">
+      <div class="card">
+        <p class="lead" style="margin-bottom:14px">The pen money question: branded refills vs a standard spool. Enter both and see the gap.</p>
+        <div class="cmp">
+          <div class="cmpcol">
+            <div class="cmphd">Branded refill</div>
+            <label class="fld">Price</label><input id="b_price" type="number" inputmode="decimal" value="13" oninput="calcSave()">
+            <label class="fld">Length / amount</label><input id="b_amt" type="number" inputmode="decimal" value="30" oninput="calcSave()">
+          </div>
+          <div class="cmpcol">
+            <div class="cmphd">Standard filament</div>
+            <label class="fld">Price</label><input id="s_price" type="number" inputmode="decimal" value="20" oninput="calcSave()">
+            <label class="fld">Length / amount</label><input id="s_amt" type="number" inputmode="decimal" value="330" oninput="calcSave()">
+          </div>
+        </div>
+        <div class="unitrow">Units:
+          <select id="u_unit" onchange="calcSave()"><option value="m">metres</option><option value="ft">feet</option><option value="g">grams</option></select>
+        </div>
+      </div>
+      <div id="saveOut"></div>
+    </div>
+    <div class="disclaimer" style="margin-top:8px">⚠ Estimates only. Prices and spool sizes vary — enter your real numbers. Only use cheap standard filament where the Compatibility tab says it's safe for your pen.</div>`;
+  calcMode('print');
+}
+
+function calcMode(m){
+  document.getElementById("ct-print").classList.toggle("on",m==='print');
+  document.getElementById("ct-save").classList.toggle("on",m==='save');
+  document.getElementById("calc-print").style.display = m==='print'?'block':'none';
+  document.getElementById("calc-save").style.display  = m==='save'?'block':'none';
+  if(m==='print') calcPrint(); else calcSave();
+}
+
+function prefillSpool(){
+  const id=document.getElementById("c_spool").value;
+  const s=spools.find(x=>x.id===id);
+  if(!s)return;
+  if(s.total) document.getElementById("c_size").value=s.total;
+  calcPrint();
+}
+
+function calcPrint(){
+  const price=+document.getElementById("c_price").value||0;
+  const size=+document.getElementById("c_size").value||0;
+  const used=+document.getElementById("c_used").value||0;
+  const out=document.getElementById("printOut");
+  if(size<=0){ out.innerHTML=""; return; }
+  const perG = price/size;
+  const cost = perG*used;
+  const perKg = perG*1000;
+  const prints = used>0 ? Math.floor(size/used) : 0;
+  out.innerHTML=`<div class="verdict v-good">
+    <div class="big"><span class="emoji">🧮</span>${money(cost)} per print</div>
+    <p>That's ${money(perG)}/g (${money(perKg)}/kg). This spool makes about <b>${prints}</b> prints of this size.</p>
+    <div><span class="tempchip">${used} g × ${money(perG)}/g</span></div>
+  </div>`;
+}
+
+function calcSave(){
+  const bp=+document.getElementById("b_price").value||0;
+  const ba=+document.getElementById("b_amt").value||0;
+  const sp=+document.getElementById("s_price").value||0;
+  const sa=+document.getElementById("s_amt").value||0;
+  const unit=document.getElementById("u_unit").value;
+  const out=document.getElementById("saveOut");
+  if(ba<=0||sa<=0){ out.innerHTML=""; return; }
+  const bPer=bp/ba, sPer=sp/sa;
+  const cheaper = sPer<=bPer;
+  const ratio = bPer>0 ? (bPer/sPer) : 0;
+  const u={m:"m",ft:"ft",g:"g"}[unit];
+  // savings over buying 1000 units (e.g. 1000 m) worth
+  const per100Branded=bPer*100, per100Std=sPer*100;
+  const save100 = (bPer-sPer)*100;
+  out.innerHTML=`<div class="verdict ${cheaper?'v-good':'v-warn'}">
+    <div class="big"><span class="emoji">${cheaper?'💰':'🤔'}</span>${cheaper?`Standard is ${ratio>=1.15?ratio.toFixed(1)+'× cheaper':'cheaper'}`:'Branded is actually cheaper here'}</div>
+    <p>Branded: <b>${money(bPer)}/${u}</b> · Standard: <b>${money(sPer)}/${u}</b>.</p>
+    ${cheaper?`<p>Over every 100${u} you use, you'd save about <b>${money(save100)}</b> by switching — and standard spools usually come in far bigger lengths, so the real saving compounds fast.</p>`
+      :`<p>With these numbers the branded refill wins. Double-check the standard spool's price/length — usually standard wins big.</p>`}
+    <div><span class="tempchip">Branded ${money(per100Branded)}/100${u}</span><span class="tempchip">Standard ${money(per100Std)}/100${u}</span></div>
+  </div>`;
+}
+
+/* ---------------- WIRING ---------------- */
+document.getElementById("toggle").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  device=b.dataset.dev;
+  [...document.querySelectorAll("#toggle button")].forEach(x=>x.classList.toggle("on",x===b));
+  applyDevice();
+});
+document.getElementById("tabs").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  tab=b.dataset.tab;
+  [...document.querySelectorAll("#tabs button")].forEach(x=>x.classList.toggle("on",x===b));
+  document.getElementById("view-check").classList.toggle("on",tab==="check");
+  document.getElementById("view-ref").classList.toggle("on",tab==="ref");
+  document.getElementById("view-fix").classList.toggle("on",tab==="fix");
+  document.getElementById("view-spools").classList.toggle("on",tab==="spools");
+  if(tab==="spools") renderSpools();
+});
+document.getElementById("penSel").addEventListener("change",runPenCheck);
+document.getElementById("filSel").addEventListener("change",runPenCheck);
+document.getElementById("useSel").addEventListener("change",runPrinterRec);
+
+loadSpools();
+fillPenSelect();
+applyDevice();
+
+/* ---------------- PWA: register service worker ---------------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
